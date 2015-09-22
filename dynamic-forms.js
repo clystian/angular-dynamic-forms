@@ -61,7 +61,22 @@ angular.module('dynform', [])
           cbAtt = '',
           foundOne = false,
           iterElem = element,
-          model = null;
+          model = null,
+          innerTemplate= null;
+          console.log("innerTemplate",innerTemplate);
+        // Check if some inner template exists
+        
+        var tpls = element.querySelectorAll("field-template");
+        if(tpls.length>0){
+          innerTemplate = tpls[0];
+          
+          // check for field element, and clean it
+          var fields = element.querySelectorAll("field");
+          if(fields.length>0){
+              angular.element(fields[0]).empty();
+          }        
+        }
+        
         
         //  Check that the required attributes are in place
         if (angular.isDefined(attrs.ngModel) && (angular.isDefined(attrs.template) || angular.isDefined(attrs.templateUrl)) && !element.hasClass('dynamic-form')) {
@@ -88,6 +103,8 @@ angular.module('dynform', [])
               props = model.split('.');
               return (base || props.shift()) + (props.length ? "['" + props.join("']['") + "']" : '');
             },
+            
+            // Function to build supported Fields
             buildFields = function (field, id) {
               if (String(id).charAt(0) == '$') {
                 // Don't process keys added by Angular...  See GitHub Issue #29
@@ -315,14 +332,34 @@ angular.module('dynform', [])
                   angular.forEach(field.attributes, function (val, attr) {
                     newElement.attr(attr, val);
                   });
-                }
+                }                                
+                
+                // wrap to contros with template if it exists
+                if(angular.isDefined(innerTemplate) && innerTemplate )
+                {   
+                  try{
+                    var elementTemplate = angular.element(innerTemplate).clone(true);
+                    var field_template = angular.element(elementTemplate).querySelectorAll("field")[0];
+                    angular.element(field_template).replaceWith(newElement);                    
+                    newElement = angular.element(elementTemplate).html();
+                    
+                  }catch(ex){ 
+                    console.error(ex); 
+                  }
+                                        
+                 }
                 
                 // Add the element to the page
                 this.append(newElement);
                 newElement = null;
               }
             };
+            // end build Fields
             
+            
+            
+            
+
             angular.forEach(template, buildFields, element);
             
             //  Determine what tag name to use (ng-form if nested; form if outermost)
@@ -371,6 +408,10 @@ angular.module('dynform', [])
             //  Compile and update DOM
             $compile(newElement)($scope);
             element.replaceWith(newElement);
+            // remove template from main DOM
+            if(innerTemplate)
+              angular.element(innerTemplate).remove();
+            
           });
         }
       }
